@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Inventario</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+  .boton-tab {
+    background-color: #9CA3AF; /* gris inicial */
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .boton-tab:hover {
+    background-color: #6B7280; /* gris más oscuro al pasar el mouse */
+  }
+
+  .boton-tab.activo {
+    background-color: #3B82F6; /* azul para el seleccionado */
+  }
+</style>
+
+</head>
+<body class="bg-gray-100 p-6">
+
+<h1 class="text-4xl font-bold mb-6 text-center">Dashboard de Inventario</h1>
+
+<!-- Resumen -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+  <div class="bg-white p-4 rounded shadow">
+    <h2 class="font-bold text-lg">Referenciales Abiertos</h2>
+    <p id="totalReferencialesAbiertos" class="text-2xl mt-2">0</p>
+  </div>
+  <div class="bg-white p-4 rounded shadow">
+    <h2 class="font-bold text-lg">Líquidos Abiertos</h2>
+    <p id="totalLiquidosAbiertos" class="text-2xl mt-2">0</p>
+  </div>
+  <div class="bg-white p-4 rounded shadow">
+    <h2 class="font-bold text-lg">Próximos a caducar (7 días)</h2>
+    <p id="proximosCaducar" class="text-2xl mt-2">0</p>
+  </div>
+  <div class="bg-white p-4 rounded shadow">
+    <h2 class="font-bold text-lg">Caducados</h2>
+    <p id="totalCaducados" class="text-2xl mt-2">0</p>
+  </div>
+</div>
+
+<!-- Filtros -->
+<div class="flex flex-col md:flex-row gap-4 mb-6">
+  <input id="filtroUbicacion" type="text" placeholder="Filtrar por ubicación" class="border p-2 rounded flex-1">
+  <input id="filtroNombreCQ" type="text" placeholder="Filtrar por Nombre / CQ" class="border p-2 rounded flex-1">
+  <button onclick="cargarTablas()" class="bg-blue-500 text-white px-4 py-2 rounded">Aplicar filtros</button>
+  <button onclick="cargarTablas(true)" class="bg-green-500 text-white px-4 py-2 rounded">Mostrar todos</button>
+</div>
+
+<!-- Tabs -->
+<div class="mb-6 flex gap-4">
+  <button id="tabReferenciales" onclick="mostrarTabla('referenciales')" class="boton-tab">Referenciales</button>
+  <button id="tabLiquidos" onclick="mostrarTabla('liquidos')" class="boton-tab">Líquidos</button>
+  <button id="btnTodosAbiertos" onclick="mostrarTodosAbiertosYCerrados('abiertos')" class="boton-tab">Todos Abiertos</button>
+  <button id="btnTodosCerrados" onclick="mostrarTodosAbiertosYCerrados('cerrados')" class="boton-tab">Todos Cerrados</button>
+</div>
+
+<!-- Tabla -->
+<div class="overflow-x-auto mb-6">
+  <table class="table-auto border-collapse border border-gray-300 w-full">
+    <thead id="tablaHead"></thead>
+    <tbody id="tablaBody"></tbody>
+  </table>
+</div>
+
+<!-- Gráficos -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+  <div class="bg-white p-4 rounded shadow" style="height:400px;">
+    <h2 class="font-bold mb-2">Abiertos vs Cerrados</h2>
+    <canvas id="chartEstado"></canvas>
+  </div>
+  <div class="bg-white p-4 rounded shadow">
+    <h2 class="font-bold mb-2">Próximos a caducar (7 días)</h2>
+    <canvas id="chartProximos"></canvas>
+  </div>
+  <div class="bg-white p-4 rounded shadow">
+    <h2 class="font-bold mb-2">Caducados</h2>
+    <canvas id="chartCaducados"></canvas>
+  </div>
+  <div class="bg-white p-4 rounded shadow">
+    <h2 class="font-bold mb-2">Referenciales por máquina</h2>
+    <canvas id="chartReferencialesMaquina"></canvas>
+  </div>
+  <div class="bg-white p-4 rounded shadow">
+    <h2 class="font-bold mb-2">Líquidos por máquina</h2>
+    <canvas id="chartLiquidosMaquina"></canvas>
+  </div>
+</div>
+
+<script>
+let currentTab = 'referenciales';
+let referencialesData = [];
+let liquidosData = [];
+let chartEstado, chartProximos, chartCaducados, chartReferencialesMaquina, chartLiquidosMaquina;
+
+// ---- ACTUALIZA VISUALMENTE LAS PESTAÑAS ----
+function actualizarTabs() {
+  const tabRef = document.getElementById('tabReferenciales');
+  const tabLiq = document.getElementById('tabLiquidos');
+}
+
+function resaltarBoton(id) {
+  const botones = ['tabReferenciales', 'tabLiquidos', 'btnTodosAbiertos', 'btnTodosCerrados'];
+  botones.forEach(b => {
+    const el = document.getElementById(b);
+    if(el) el.classList.remove('activo');
+  });
+  const seleccionado = document.getElementById(id);
+  if(seleccionado) seleccionado.classList.add('activo');
+}
+
+// ---- MUESTRA TABLA SEGÚN FILTRO ----
+function mostrarProductosPorFiltro(tipo, filtro) {
+  let data = tipo === 'referenciales' ? referencialesData : liquidosData;
+  const hoy = new Date();
+  const sieteDias = new Date(); sieteDias.setDate(hoy.getDate() + 7);
+
+  switch (filtro) {
+    case 'abiertos': data = data.filter(d => !d.cerrado); break;
+    case 'cerrados': data = data.filter(d => d.cerrado); break;
+    case 'proximos': data = data.filter(d => !d.cerrado && new Date(d.fecha_cad) <= sieteDias && new Date(d.fecha_cad) >= hoy); break;
+    case 'caducados': data = data.filter(d => !d.cerrado && new Date(d.fecha_cad) < hoy); break;
+    case 'todos': break; // no filtramos nada
+  }
+
+  mostrarTabla(tipo);
+
+  const tablaBody = document.getElementById('tablaBody');
+  const visibles = new Set(data.map(d => d.id));
+  [...tablaBody.children].forEach(tr => {
+    const id = parseInt(tr.children[0].textContent);
+    tr.style.display = visibles.has(id) ? '' : 'none';
+  });
+}
+
+function mostrarTodosAbiertosYCerrados(estado) {
+  if(estado === 'abiertos') resaltarBoton('btnTodosAbiertos');
+  else if(estado === 'cerrados') resaltarBoton('btnTodosCerrados');
+  
+  // Combina ambos arrays
+  let combinados = [...referencialesData, ...liquidosData];
+
+  // Filtra según el estado
+  if (estado === 'abiertos') {
+    combinados = combinados.filter(p => !p.cerrado);
+  } else if (estado === 'cerrados') {
+    combinados = combinados.filter(p => p.cerrado);
+  }
+
+  // Guardamos el tipo como 'todos' para que ordenar funcione
+  const currentType = 'todos';
+
+  // Header genérico para todos los productos
+  const headers = ['ID','Tipo','Nombre/CQ','Ubicación','Fecha Intro','Fecha Cad','ORR','Fecha Reg','Estado'];
+  const tablaHead = document.getElementById('tablaHead');
+  const tablaBody = document.getElementById('tablaBody');
+  tablaHead.innerHTML = '';
+  tablaBody.innerHTML = '';
+
+  const headRow = document.createElement('tr');
+  headRow.className = 'bg-gray-200';
+  headers.forEach((h, i) => {
+    const th = document.createElement('th');
+    th.className = 'border px-4 py-2 cursor-pointer select-none';
+    th.textContent = h;
+
+    // Añadimos evento de clic para ordenar
+    th.addEventListener('click', () => {
+      if (ordenActual.columna === i) {
+        ordenActual.asc = !ordenActual.asc;
+      } else {
+        ordenActual.columna = i;
+        ordenActual.asc = true;
+      }
+      ordenarTodosYMostrar(combinados, headers);
+    });
+
+    headRow.appendChild(th);
+  });
+  tablaHead.appendChild(headRow);
+
+  // Pintar la tabla inicialmente
+  ordenarTodosYMostrar(combinados, headers);
+}
+
+function ordenarTodosYMostrar(data, headers) {
+  if (ordenActual.columna != null) {
+    const i = ordenActual.columna;
+    const asc = ordenActual.asc;
+
+    data.sort((a, b) => {
+      let valA, valB;
+      switch (headers[i]) {
+        case 'ID':
+          valA = a.id; valB = b.id; break;
+        case 'Tipo':
+          valA = a.cq ? 'Referencial' : 'Líquido';
+          valB = b.cq ? 'Referencial' : 'Líquido'; break;
+        case 'Nombre/CQ':
+          valA = a.cq || a.nombre || ''; valB = b.cq || b.nombre || ''; break;
+        case 'Ubicación':
+          valA = a.ubicacion || ''; valB = b.ubicacion || ''; break;
+        case 'Fecha Intro':
+          valA = a.fecha_intro ? new Date(a.fecha_intro) : ''; 
+          valB = b.fecha_intro ? new Date(b.fecha_intro) : ''; break;
+        case 'Fecha Cad':
+          valA = a.fecha_cad ? new Date(a.fecha_cad) : ''; 
+          valB = b.fecha_cad ? new Date(b.fecha_cad) : ''; break;
+        case 'ORR':
+          valA = a.orr || ''; valB = b.orr || ''; break;
+        case 'Fecha Reg':
+          valA = a.fecha_reg ? new Date(a.fecha_reg) : ''; 
+          valB = b.fecha_reg ? new Date(b.fecha_reg) : ''; break;
+        case 'Estado':
+          valA = a.cerrado; valB = b.cerrado; break;
+        default:
+          valA = ''; valB = '';
+      }
+
+      if (valA instanceof Date && valB instanceof Date) return asc ? valA - valB : valB - valA;
+      if (typeof valA === 'number' && typeof valB === 'number') return asc ? valA - valB : valB - valA;
+
+      valA = valA.toString().toLowerCase();
+      valB = valB.toString().toLowerCase();
+      return asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    });
+  }
+
+  // Pintar filas
+  const tablaBody = document.getElementById('tablaBody');
+  tablaBody.innerHTML = '';
+
+  const hoy = new Date();
+  data.forEach(p => {
+    const fechaCad = p.fecha_cad ? new Date(p.fecha_cad) : null;
+    const rowClass = p.cerrado ? 'bg-gray-300' :
+                     fechaCad && fechaCad < hoy ? 'bg-red-700 text-white' :
+                     'bg-green-100';
+    const tipo = p.cq ? 'Referencial' : 'Líquido';
+
+    const row = document.createElement('tr');
+    row.className = rowClass;
+
+    row.innerHTML = `<td class="border px-4 py-2">${p.id}</td>
+                     <td class="border px-4 py-2">${tipo}</td>
+                     <td class="border px-4 py-2">${p.cq || p.nombre || ''}</td>
+                     <td class="border px-4 py-2">${p.ubicacion || ''}</td>
+                     <td class="border px-4 py-2">${p.fecha_intro ? new Date(p.fecha_intro).toLocaleDateString() : ''}</td>
+                     <td class="border px-4 py-2">${p.fecha_cad ? new Date(p.fecha_cad).toLocaleDateString() : ''}</td>
+                     <td class="border px-4 py-2">${p.orr || ''}</td>
+                     <td class="border px-4 py-2">${p.fecha_reg ? new Date(p.fecha_reg).toLocaleDateString() : ''}</td>
+                     <td class="border px-4 py-2 font-bold">${p.cerrado ? 'Cerrado' : 'Abierto'}</td>`;
+    tablaBody.appendChild(row);
+  });
+
+  // Actualizar encabezado con flechas
+  const ths = document.querySelectorAll('#tablaHead th');
+  ths.forEach((th, i) => {
+    const base = th.textContent.replace(/[↑↓]/g, '').trim();
+    if (ordenActual.columna === i)
+      th.textContent = base + (ordenActual.asc ? ' ↑' : ' ↓');
+    else
+      th.textContent = base;
+  });
+}
+
+// ---- FETCH Y CARGA DE DATOS ----
+async function fetchData(endpoint) {
+  try { const res = await fetch(endpoint); return await res.json(); }
+  catch (err) { console.error('Error al cargar datos:', err); return []; }
+}
+
+async function cargarTablas(todos=false) {
+  const ubicacion = document.getElementById('filtroUbicacion').value;
+  const nombreCQ = document.getElementById('filtroNombreCQ').value;
+
+  let urlRef = '/referenciales';
+  if (!todos && (ubicacion || nombreCQ)) {
+    if (nombreCQ) urlRef = `/referenciales/buscar/${nombreCQ}`;
+    else if (ubicacion) urlRef = `/referenciales/ubicacion/${ubicacion}`;
+  }
+  referencialesData = await fetchData(urlRef);
+
+  let urlLiq = '/liquidos';
+  if (!todos && (ubicacion || nombreCQ)) {
+    if (nombreCQ) urlLiq = `/liquidos/buscar/${nombreCQ}`;
+    else if (ubicacion) urlLiq = `/liquidos/ubicacion/${ubicacion}`;
+  }
+  liquidosData = await fetchData(urlLiq);
+
+  actualizarResumen();
+  mostrarTabla(currentTab);
+  actualizarGraficos();
+  actualizarTabs();
+}
+
+function actualizarResumen() {
+  const abiertosRef = referencialesData.filter(r => !r.cerrado).length;
+  const abiertosLiq = liquidosData.filter(l => !l.cerrado).length;
+  document.getElementById('totalReferencialesAbiertos').innerText = abiertosRef;
+  document.getElementById('totalLiquidosAbiertos').innerText = abiertosLiq;
+
+  const hoy = new Date();
+  const sieteDias = new Date(); sieteDias.setDate(hoy.getDate() + 7);
+
+  const proximosRef = referencialesData.filter(r => !r.cerrado && new Date(r.fecha_cad) <= sieteDias && new Date(r.fecha_cad) >= hoy).length;
+  const proximosLiq = liquidosData.filter(l => !l.cerrado && new Date(l.fecha_cad) <= sieteDias && new Date(l.fecha_cad) >= hoy).length;
+  document.getElementById('proximosCaducar').innerText = proximosRef + proximosLiq;
+
+  const caducadosRef = referencialesData.filter(r => !r.cerrado && new Date(r.fecha_cad) < hoy).length;
+  const caducadosLiq = liquidosData.filter(l => !l.cerrado && new Date(l.fecha_cad) < hoy).length;
+  document.getElementById('totalCaducados').innerText = caducadosRef + caducadosLiq;
+}
+
+// ---- MOSTRAR TABLA CON ORDENACIÓN ----
+let ordenActual = { columna: null, asc: true };
+
+function mostrarTabla(tab, filtroUbic = null) {
+  currentTab = tab;
+  actualizarTabs();
+
+  if(tab === 'referenciales') resaltarBoton('tabReferenciales');
+  else if(tab === 'liquidos') resaltarBoton('tabLiquidos');
+
+  const tablaHead = document.getElementById('tablaHead');
+  const tablaBody = document.getElementById('tablaBody');
+  tablaHead.innerHTML = '';
+  tablaBody.innerHTML = '';
+
+  let data = tab === 'referenciales' ? referencialesData.slice() : liquidosData.slice();
+  if (filtroUbic)
+    data = data.filter(d => d.ubicacion.split(',').map(u => u.trim()).includes(filtroUbic));
+
+  const headers = tab === 'referenciales'
+    ? ['ID', 'CQ', 'Ubicación', 'Fecha Intro', 'Fecha Cad', 'Estado']
+    : ['ID', 'Nombre', 'Ubicación', 'Fecha Intro', 'Fecha Cad', 'ORR', 'Fecha Reg', 'Estado'];
+
+  // ----- Crear encabezado con clic para ordenar -----
+  const headRow = document.createElement('tr');
+  headRow.className = 'bg-gray-200';
+
+  headers.forEach((h, i) => {
+    const th = document.createElement('th');
+    th.className = 'border px-4 py-2 cursor-pointer select-none';
+    th.textContent = h;
+
+    // Mostrar flecha si es la columna activa
+    if (ordenActual.columna === i) {
+      th.textContent += ordenActual.asc ? ' ↑' : ' ↓';
+    }
+
+    th.addEventListener('click', () => {
+      if (ordenActual.columna === i) {
+        ordenActual.asc = !ordenActual.asc; // invertir orden
+      } else {
+        ordenActual.columna = i;
+        ordenActual.asc = true;
+      }
+      ordenarDatosYMostrar(data, headers, i);
+    });
+    headRow.appendChild(th);
+  });
+
+  tablaHead.appendChild(headRow);
+  ordenarDatosYMostrar(data, headers, ordenActual.columna);
+}
+
+// ---- FUNCIÓN DE ORDENACIÓN ----
+function ordenarDatosYMostrar(data, headers, columnaIndex) {
+  if (columnaIndex != null) {
+    const header = headers[columnaIndex];
+    const asc = ordenActual.asc;
+    data.sort((a, b) => {
+      let valA, valB;
+
+      // Mapear valores según la columna
+      if (headers[0] === 'ID') {
+        if (headers.includes('CQ')) { // referenciales
+          switch (header) {
+            case 'ID': valA = a.id; valB = b.id; break;
+            case 'CQ': valA = a.cq; valB = b.cq; break;
+            case 'Ubicación': valA = a.ubicacion; valB = b.ubicacion; break;
+            case 'Fecha Intro': valA = new Date(a.fecha_intro); valB = new Date(b.fecha_intro); break;
+            case 'Fecha Cad': valA = new Date(a.fecha_cad); valB = new Date(b.fecha_cad); break;
+            case 'Estado': valA = a.cerrado; valB = b.cerrado; break;
+          }
+        } else { // líquidos
+          switch (header) {
+            case 'ID': valA = a.id; valB = b.id; break;
+            case 'Nombre': valA = a.nombre; valB = b.nombre; break;
+            case 'Ubicación': valA = a.ubicacion; valB = b.ubicacion; break;
+            case 'Fecha Intro': valA = new Date(a.fecha_intro); valB = new Date(b.fecha_intro); break;
+            case 'Fecha Cad': valA = new Date(a.fecha_cad); valB = new Date(b.fecha_cad); break;
+            case 'ORR': valA = a.orr; valB = b.orr; break;
+            case 'Fecha Reg': valA = new Date(a.fecha_reg); valB = new Date(b.fecha_reg); break;
+            case 'Estado': valA = a.cerrado; valB = b.cerrado; break;
+          }
+        }
+      }
+
+      if (valA == null) valA = '';
+      if (valB == null) valB = '';
+
+      if (valA instanceof Date && valB instanceof Date)
+        return asc ? valA - valB : valB - valA;
+
+      if (typeof valA === 'number' && typeof valB === 'number')
+        return asc ? valA - valB : valB - valA;
+
+      valA = valA.toString().toLowerCase();
+      valB = valB.toString().toLowerCase();
+      return asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    });
+  }
+
+  // --- Pintar cuerpo de la tabla ordenado ---
+  const tablaBody = document.getElementById('tablaBody');
+  tablaBody.innerHTML = '';
+
+  const hoy = new Date();
+  const tresDias = new Date(); tresDias.setDate(hoy.getDate() + 3);
+  const sieteDias = new Date(); sieteDias.setDate(hoy.getDate() + 7);
+
+  data.forEach(r => {
+    const fechaCad = new Date(r.fecha_cad);
+    let rowClass = r.cerrado ? 'bg-gray-300' :
+                   fechaCad < hoy ? 'bg-red-700 text-white' :
+                   fechaCad <= tresDias ? 'bg-red-200' :
+                   fechaCad <= sieteDias ? 'bg-yellow-200' :
+                   'bg-green-100';
+
+    let rowHTML = `<tr class="${rowClass}">`;
+    if (headers.includes('CQ')) {
+      rowHTML += `<td class="border px-4 py-2">${r.id}</td>
+                  <td class="border px-4 py-2">${r.cq}</td>
+                  <td class="border px-4 py-2">${r.ubicacion}</td>
+                  <td class="border px-4 py-2">${new Date(r.fecha_intro).toLocaleDateString()}</td>
+                  <td class="border px-4 py-2">${new Date(r.fecha_cad).toLocaleDateString()}</td>
+                  <td class="border px-4 py-2 font-bold">${r.cerrado ? 'Cerrado' : 'Abierto'}</td>`;
+    } else {
+      rowHTML += `<td class="border px-4 py-2">${r.id}</td>
+                  <td class="border px-4 py-2">${r.nombre}</td>
+                  <td class="border px-4 py-2">${r.ubicacion}</td>
+                  <td class="border px-4 py-2">${new Date(r.fecha_intro).toLocaleDateString()}</td>
+                  <td class="border px-4 py-2">${new Date(r.fecha_cad).toLocaleDateString()}</td>
+                  <td class="border px-4 py-2">${r.orr}</td>
+                  <td class="border px-4 py-2">${new Date(r.fecha_reg).toLocaleDateString()}</td>
+                  <td class="border px-4 py-2 font-bold">${r.cerrado ? 'Cerrado' : 'Abierto'}</td>`;
+    }
+    rowHTML += '</tr>';
+    tablaBody.innerHTML += rowHTML;
+  });
+
+  // Volver a pintar encabezado con flecha
+  mostrarEncabezadoConFlecha(headers);
+}
+
+function mostrarEncabezadoConFlecha(headers) {
+  const tablaHead = document.getElementById('tablaHead');
+  const ths = tablaHead.querySelectorAll('th');
+  ths.forEach((th, i) => {
+    const base = th.textContent.replace(/[↑↓]/g, '').trim();
+    if (ordenActual.columna === i)
+      th.textContent = base + (ordenActual.asc ? ' ↑' : ' ↓');
+    else
+      th.textContent = base;
+  });
+}
+
+// ---- GRÁFICOS ----
+function actualizarGraficos() {
+  const ctxEstado = document.getElementById('chartEstado').getContext('2d');
+  const ctxProx = document.getElementById('chartProximos').getContext('2d');
+  const ctxCad = document.getElementById('chartCaducados').getContext('2d');
+  const ctxRefMaq = document.getElementById('chartReferencialesMaquina').getContext('2d');
+  const ctxLiqMaq = document.getElementById('chartLiquidosMaquina').getContext('2d');
+
+  const totalAbierto = referencialesData.filter(r => !r.cerrado).length +
+                      liquidosData.filter(l => !l.cerrado).length;
+  const totalCerrado = referencialesData.filter(r => r.cerrado).length +
+                       liquidosData.filter(l => l.cerrado).length;
+
+  if(chartEstado) chartEstado.destroy();
+  chartEstado = new Chart(ctxEstado, {
+    type: 'doughnut',
+    data: {
+      labels: ['Abiertos','Cerrados'],
+      datasets:[{ data:[totalAbierto,totalCerrado], backgroundColor:['#34D399','#F87171'] }]
+    },
+    options: {
+      responsive:true,
+      maintainAspectRatio:false,
+      onClick: (e, elements) => {
+        if(elements.length > 0) {
+          const filtro = elements[0].index === 0 ? 'abiertos' : 'cerrados';
+          mostrarProductosPorFiltro(currentTab, filtro);
+        }
+      }
+    }
+  });
+
+  const hoy = new Date();
+  const sieteDias = new Date(); sieteDias.setDate(hoy.getDate() + 7);
+
+  const proximosRef = referencialesData.filter(r => !r.cerrado && new Date(r.fecha_cad) <= sieteDias && new Date(r.fecha_cad) >= hoy).length;
+  const proximosLiq = liquidosData.filter(l => !l.cerrado && new Date(l.fecha_cad) <= sieteDias && new Date(l.fecha_cad) >= hoy).length;
+
+  if(chartProximos) chartProximos.destroy();
+  chartProximos = new Chart(ctxProx, {
+    type:'bar',
+    data:{ labels:['Referenciales','Líquidos'], datasets:[{ label:'Próximos a caducar', data:[proximosRef,proximosLiq], backgroundColor:['#FBBF24','#F59E0B'] }]},
+    options:{
+      responsive:true,
+      scales:{ 
+        y:{
+          beginAtZero:true,
+          max: Math.max(proximosRef, proximosLiq) + 5 // máximo dinámico
+        }
+      },
+      onClick: (e, elements) => {
+        if(elements.length > 0){
+          const tipo = elements[0].index === 0 ? 'referenciales' : 'liquidos';
+          mostrarProductosPorFiltro(tipo, 'proximos');
+        }
+      }
+    }
+  });
+
+  const caducadosRef = referencialesData.filter(r => !r.cerrado && new Date(r.fecha_cad) < hoy).length;
+  const caducadosLiq = liquidosData.filter(l => !l.cerrado && new Date(l.fecha_cad) < hoy).length;
+
+  if(chartCaducados) chartCaducados.destroy();
+  chartCaducados = new Chart(ctxCad,{
+    type:'bar',
+    data:{ labels:['Referenciales','Líquidos'], datasets:[{ label:'Caducados', data:[caducadosRef,caducadosLiq], backgroundColor:['#EF4444','#B91C1C'] }]},
+    options:{
+      responsive:true,
+      scales:{
+        y:{
+          beginAtZero:true,
+          max: Math.max(caducadosRef, caducadosLiq) + 5
+        }
+      },
+      onClick:(e,elements)=>{
+        if(elements.length>0){
+          const tipo = elements[0].index===0?'referenciales':'liquidos';
+          mostrarProductosPorFiltro(tipo,'caducados');
+        }
+      }
+    }
+  });
+
+  // Conteo por máquina
+  function conteoPorMaquina(data){
+    const maquinaCounts={};
+    data.forEach(p=>{
+      p.ubicacion.split(',').forEach(u=>{
+        const m=u.trim();
+        if(!maquinaCounts[m]) maquinaCounts[m]=0;
+        maquinaCounts[m]++;
+      });
+    });
+    const labels=Object.keys(maquinaCounts).sort((a,b)=>a.match(/\d+/)-b.match(/\d+/));
+    const counts=labels.map(l=>maquinaCounts[l]);
+    return {labels,counts};
+  }
+
+  const refMaq=conteoPorMaquina(referencialesData);
+  const liqMaq=conteoPorMaquina(liquidosData);
+
+  if(chartReferencialesMaquina) chartReferencialesMaquina.destroy();
+  chartReferencialesMaquina=new Chart(ctxRefMaq,{
+    type:'bar',
+    data:{labels:refMaq.labels,datasets:[{label:'Referenciales',data:refMaq.counts,backgroundColor:'#60A5FA'}]},
+    options:{
+      responsive:true,
+      scales:{ y:{ beginAtZero:true, max: Math.max(...refMaq.counts)+2 } },
+      onClick:(e,elements)=>{ if(elements.length>0){ mostrarTabla('referenciales', refMaq.labels[elements[0].index]); } }
+    }
+  });
+
+  if(chartLiquidosMaquina) chartLiquidosMaquina.destroy();
+  chartLiquidosMaquina=new Chart(ctxLiqMaq,{
+    type:'bar',
+    data:{labels:liqMaq.labels,datasets:[{label:'Líquidos',data:liqMaq.counts,backgroundColor:'#10B981'}]},
+    options:{
+      responsive:true,
+      scales:{ y:{ beginAtZero:true, max: Math.max(...liqMaq.counts)+2 } },
+      onClick:(e,elements)=>{ if(elements.length>0){ mostrarTabla('liquidos', liqMaq.labels[elements[0].index]); } }
+    }
+  });
+}
+
+cargarTablas();
+</script>
+</body>
+</html>

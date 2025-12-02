@@ -1,0 +1,1927 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Inventario de Referenciales y Líquidos</title>
+  <link rel="icon" type="image/png" href="michelin.png" sizes="32x32">
+  <style>
+
+    #modalProducto #btnCerrarXModal:hover {
+      color: #fff !important;
+      background: #e53935 !important;
+      border-radius: 50%;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    body {
+    font-family: Arial, sans-serif;
+    margin: 40px;
+    color: #333;
+    position: relative;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: url("michelin.png") no-repeat center center;
+      background-size: contain;
+      opacity: 0.08;
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    h1,h2 {
+      text-align:center;
+      color:#003f87;
+    }
+
+    .filtro,.formulario {
+      text-align:center;
+      margin-bottom:20px;
+    }
+
+    button {
+      background-color:#003f87;
+      color:white;
+      border:none;
+      padding:10px 15px;
+      border-radius:5px;
+      cursor:pointer;
+      margin:5px;
+    }
+
+    button:hover {
+      background-color:#002f6c;
+    }
+
+    .seccion {
+      margin-top:30px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      background-color: #fff;
+      font-size: 13px; /* tamaño de letra más pequeño */
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 5px 7px; /* menos padding para filas más compactas */
+      text-align: left;
+    }
+
+    th {
+      background-color: #e3e7eb;
+      font-weight: 600;
+    }
+
+    input[type="text"], input[type="date"] {
+      padding: 3px;
+      width: 140px;
+      margin: 3px;
+      font-size: 12px;
+    }
+
+    button {
+      padding: 8px 12px; /* botones más pequeños */
+      font-size: 12px;
+    }
+
+    /* --- ESTADOS DE PRODUCTOS --- */
+    .caducado {
+      background-color: #e53935 !important;
+      color: white !important;
+      font-weight: bold;
+    }
+
+    .proximo {
+      background-color: #f7e5e5 !important;
+    }
+
+    .caducado td:last-child::after {
+      content: " ⚠ CADUCADO";
+      font-weight: bold;
+      color: yellow;
+    }
+
+    .tabla-scroll {
+      max-height: 250px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      margin-bottom: 15px;
+      border-radius: 5px;
+    }
+
+    tr.selected {
+      background-color: #dde9f5 !important;
+      color: black !important;
+    }
+
+    .btn-plano {
+      background: none;       /* Sin fondo */
+      border: none;           /* Sin borde */
+      color: inherit;         /* Hereda el color del texto */
+      padding: 0;             /* Sin espacio extra */
+      font: inherit;          /* Usa la misma fuente que el texto */
+      cursor: pointer;        /* Cambia el cursor al pasar el mouse */
+    }
+
+    .btn-plano:hover {
+      background-color: white;
+      color: white;            /* Opcional: cambio de color al pasar el mouse */
+    }
+
+    #alertaCaducidad {
+      display:none;
+      background-color:#f7e5e5;
+      color:#800000;
+      padding:15px;
+      text-align:center;
+      border:2px solid #800000;
+      margin-bottom:20px;
+      border-radius:5px;
+    }
+
+    #modalProducto {
+      display:none;
+      position:fixed;
+      top:0;
+      left:0;
+      width:100vw;
+      height:100vh;
+      background-color:rgba(0,0,0,0.5);
+      justify-content:center;
+      align-items:center;
+      z-index:10000;
+      overflow:auto;
+    }
+
+    #modalProducto .contenido {
+      background: linear-gradient(135deg, #fafdff 0%, #e9f0f7 100%);
+      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18);
+      padding: 36px 44px 28px 44px;
+      border-radius: 18px;
+      width: 600px;
+      max-width: 98vw;
+      max-height: 92vh;
+      position: relative;
+      text-align: left;
+      overflow-y: auto;
+      box-sizing: border-box;
+      font-size: 16px;
+      border: 1.5px solid #dbeafe;
+      transition: box-shadow 0.2s;
+    }
+
+    #modalProducto .contenido h3 {
+      margin-top: 0;
+      margin-bottom: 18px;
+      font-size: 1.5em;
+      color: #003f87;
+      letter-spacing: 0.5px;
+      font-weight: 700;
+      border-bottom: 1.5px solid #e3e7eb;
+      padding-bottom: 10px;
+    }
+
+    #modalProducto label {
+      display: block;
+      margin: 16px 0 5px 0;
+      font-weight: 600;
+      color: #003f87;
+      letter-spacing: 0.2px;
+    }
+
+    #modalProducto input[type="text"],
+    #modalProducto input[type="date"],
+    #modalProducto select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1.5px solid #b6c6e3;
+      border-radius: 7px;
+      margin-bottom: 6px;
+      font-size: 15px;
+      background: #f7fbff;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+
+    #modalProducto input[type="text"]:focus,
+    #modalProducto input[type="date"]:focus,
+    #modalProducto select:focus {
+      border-color: #003f87;
+      box-shadow: 0 0 0 2px #e3e7eb;
+    }
+
+    #modalProducto select[multiple] {
+      min-height: 90px;
+      background: #f7fbff;
+    }
+
+    #modalProducto small {
+      color: #4b5563;
+      font-size: 12px;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    #modalProducto .contenido > div {
+      margin-top: 18px;
+      text-align: right;
+    }
+
+    #modalProducto button {
+      background: linear-gradient(90deg, #003f87 0%, #0059b2 100%);
+      color: #fff;
+      border: none;
+      padding: 9px 18px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 5px 0 0 8px;
+      font-size: 15px;
+      font-weight: 500;
+      box-shadow: 0 2px 8px 0 rgba(0,0,0,0.04);
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+
+    #modalProducto button:hover {
+      background: linear-gradient(90deg, #0059b2 0%, #003f87 100%);
+      box-shadow: 0 4px 16px 0 rgba(0,0,0,0.08);
+    }
+
+    #btnCerrarXModal {
+      background: none;
+      color: #003f87;
+      border: none;
+      font-size: 22px;
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      cursor: pointer;
+      z-index: 10;
+      line-height: 1;
+      padding: 4px 10px;
+      border-radius: 50%;
+      transition: background 0.2s, color 0.2s;
+    }
+    #btnCerrarXModal:hover {
+      color: #fff !important;
+      background: #e53935 !important;
+    }
+
+    #btnCerrarXCerrados:hover {
+      color: #fff !important;
+      background: #e53935 !important;
+      border-radius: 50%;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    @media (max-width: 700px) {
+      #modalProducto .contenido {
+        width: 98vw;
+        min-width: unset;
+        padding: 10px;
+        font-size: 14px;
+      }
+    }
+
+    #modalProducto label {
+    display:block;
+    margin:8px 0 3px;
+    font-weight:bold;
+    color:#003f87;
+    }
+
+    #modalProducto input {
+      width:100%;
+      margin-bottom:10px;
+      padding:6px;
+      border:1px solid #ccc;
+      border-radius:5px;
+    }
+
+    #tablaReferenciales tbody tr:hover,
+    #tablaLiquidos tbody tr:hover {
+      background-color: #cce5ff;
+      color: #003f87;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    
+    #tablaReferenciales tbody tr:hover td,
+    #tablaLiquidos tbody tr:hover td {
+      color: #010408;
+      background-color: #d9e6f3;
+    }
+
+  </style>
+</head>
+<body>
+
+<h1>
+  <img src="logo2.png" alt="Logo Michelin" style="height:50px; vertical-align:middle; margin-right:10px;">
+  Inventario - Referenciales y Líquidos 
+</h1>
+
+<div id="alertaCaducidad"></div>
+
+<div id="seccionCaducados" class="seccion" style="display:none;">
+  <h2>❌ Productos Caducados</h2>
+  <div class="tabla-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th>Ubicación</th>
+          <th>Fecha Caducidad</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="seccion">
+  <h2>
+      <button class="btn-plano" onclick="descargarExcelReferencialesConfirmacion()" title="Descargar excel de Referenciales">
+        📥
+      </button>
+      <button class="btn-plano" onclick="descargarPDFReferenciales()" title="Imprimir Referenciales">🖨️</button>
+     Referenciales 
+    <input 
+      type="text" 
+      id="buscarReferenciales" 
+      placeholder="🔍 Buscar CQ o ubicacion..." 
+      oninput="filtrarReferenciales()"
+      title="Buscar referencial por CQ o ubicación"
+    >
+    <input 
+      type="text" 
+      id="buscarReferencialesOR" 
+      placeholder="🔍 Buscar OR..." 
+      oninput="filtrarReferencialesOR()"
+      title="Buscar referencial por OR"
+    >
+  </h2>
+
+  <div class="tabla-scroll">
+    <table id="tablaReferenciales">
+      <thead>
+        <tr>
+          <th data-col="cq">CQ</th>
+          <th data-col="ubicacion">Ubicación</th>
+          <th data-col="fecha_intro">Fecha Introducción</th>
+          <th data-col="fecha_cad">Fecha Caducidad</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="formulario">
+    <button onclick="abrirModalNuevo('referencial')" title="Añadir un nuevo referencial">+ Añadir referencial</button>
+  </div>
+</div>
+
+<div class="seccion">
+  <h2>
+      <button class="btn-plano" onclick="descargarExcelLiquidosConfirmacion()" title="Descargar excel de Líquidos">📥</button>
+      <button class="btn-plano" onclick="descargarPDFLiquidos()" title="Imprimir Líquidos">🖨️</button>
+     Líquidos 
+    <input 
+      type="text" 
+      id="buscarLiquido" 
+      placeholder="🔍 Buscar nombre o ubicacion..." 
+      oninput="filtrarLiquidos()"
+      title="Buscar líquido por nombre o ubicación"
+    >
+    <input 
+      type="text" 
+      id="buscarLiquidoOR" 
+      placeholder="🔍 Buscar OR..." 
+      oninput="filtrarLiquidosOR()"
+      title="Buscar líquido por OR"
+    >
+  </h2>
+
+  <div class="tabla-scroll">
+    <table id="tablaLiquidos">
+      <thead>
+        <tr>
+          <th data-col="nombre">Nombre</th>
+          <th data-col="ubicacion">Ubicación</th>
+          <th data-col="fecha_intro">Fecha Introducción</th>
+          <th data-col="fecha_cad">Fecha Caducidad</th>
+          <th data-col="orr">ORR</th>
+          <th data-col="fecha_reg">Fecha Registro</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="formulario">
+  <button onclick="abrirModalNuevo('liquido')" title="Añadir un nuevo líquido">+ Añadir líquido</button>
+  </div>
+</div>
+
+<div style="text-align:center; margin-top:30px;">
+  <button onclick="abrirModalCerrados()" title="Ver productos que han sido cerrados">Ver productos cerrados</button>
+  <button onclick="descargarExcelConfirmacion()" title="Descargar excel productos">📥 Descargar Productos</button>
+  <button onclick="descargarPDF()" title="Imprimir productos">📥 Descargar PDF Productos</button>
+</div>
+
+<!-- Modal -->
+<div id="modalProducto">
+  <div class="contenido">
+    <button id="btnCerrarXModal" title="Cerrar ventana" style="position:absolute;top:8px;right:10px;font-size:20px;background:none;border:none;color:#003f87;cursor:pointer;z-index:10;line-height:1;">&times;</button>
+  <h3 id="modalTitulo"></h3>
+  <label for="modalCampo1" id="labelCampo1">CQ</label>
+  <input type="text" id="modalCampo1" placeholder="CQ" title="Introduce el CQ o nombre del producto">
+
+  <label for="modalCampo2">Ubicación</label>
+  <!-- Aqui se cambia el nombre de las ubicaciones -->
+  <select id="modalCampo2" multiple size="7" title="Selecciona una o varias ubicaciones">
+    <option value="Maquina 1">Maquina 1</option>
+    <option value="Maquina 2">Maquina 2</option>
+    <option value="Maquina 3">Maquina 3</option>
+    <option value="Maquina 4">Maquina 4</option>
+    <option value="Maquina 5">Maquina 5</option>
+    <option value="Maquina 6">Maquina 6</option>
+    <option value="Maquina 7">Maquina 7</option>
+  </select>
+
+    <label for="modalCampo3">Fecha de Introducción</label>
+    <input type="date" id="modalCampo3" placeholder="Fecha Introducción" title="Fecha de introducción del producto">
+
+    <label for="modalCampo4">Fecha de Caducidad</label>
+    <input type="date" id="modalCampo4" placeholder="Fecha Caducidad" title="Fecha de caducidad del producto">
+
+    <label for="modalCampo5">OR</label>
+    <input type="text" id="modalCampo5" placeholder="OR" title="OR del producto">
+
+    <label for="modalCampo6">Fecha de Registro</label>
+    <input type="date" id="modalCampo6" placeholder="Fecha Registro" title="Fecha de registro del producto">
+
+    <div>
+  <button id="btnModificarModal" title="Permite editar los datos del producto seleccionado">🖉 Modificar</button>
+  <button id="btnGuardarModal" title="Guardar los cambios realizados">🖫 Guardar</button>
+  <button id="btnEliminarModal" title="Eliminar este producto">🗑 Eliminar</button>
+  <button id="btnCerrarModal" title="Cerrar este producto">Cerrar Producto</button>
+  <button id="btnSalirModal" title="Salir del formulario" style="background-color: #e53935;">Salir</button>
+    </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de productos cerrados -->
+<div id="modalCerrados" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+    background-color:rgba(0,0,0,0.5);justify-content:center;align-items:center;z-index:10000;">
+  <div style="background:#fff;padding:30px 30px 20px 30px;border-radius:14px;width:700px;max-width:95vw;text-align:center;max-height:90vh;overflow-y:auto;position:relative;">
+    <button id="btnCerrarXCerrados" title="Cerrar ventana" style="position:absolute;top:8px;right:10px;font-size:20px;background:none;border:none;color:#003f87;cursor:pointer;z-index:10;line-height:1;">&times;</button>
+    <h3>Productos Cerrados</h3>
+    <div id="productosCerradosList" style="text-align:left;margin-top:10px;"></div>
+    <div style="text-align:center; margin-top:30px;">
+  <button onclick="descargarExcelCerradosConfirmacion()" title="Descargar productos que han sido cerrados">📥 Descargar Productos Cerrados</button>
+</div>
+    <button id="btnCerrarCerrados">Cerrar</button>
+  </div>
+
+<!-- Modal de Autenticación -->
+<!--<div id="modalAuth" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+    background-color:rgba(0,0,0,0.5);justify-content:center;align-items:center;z-index:10000;">
+  <div style="background:#fff;padding:20px;border-radius:10px;width:300px;text-align:center;">
+    <h3>Autenticación requerida</h3>
+    <input id="authUsuario" type="text" placeholder="Usuario" style="width:90%;padding:8px;margin:5px 0;"><br>
+    <input id="authPassword" type="password" placeholder="Contraseña" style="width:90%;padding:8px;margin:5px 0;"><br>
+    <button id="btnAuth">Aceptar</button>
+    <button id="btnCancelAuth">Cancelar</button>
+  </div>
+</div>-->
+
+<script>
+
+  const API_URL="http://localhost:3000"; // Cambiar al host del Node
+
+  let referenciales = [];
+  let liquidos = [];
+
+  let referencialesSeleccionada = -1;
+  let liquidoSeleccionado = -1;
+
+  let tipoSeleccionado = null;
+  let indiceSeleccionado = null;
+
+  let ordenActual = {
+    referenciales: {},
+    liquidos: {}
+  };
+
+  // ---- Formatear fecha YYYY-MM-DD ----
+  function formatDate(dateStr) {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${year}-${month}-${day}`;
+  }
+
+  function formatearFecha(fecha) {
+    if (!fecha) return '';
+    const d = new Date(fecha);
+    if (isNaN(d)) return ''; // por si viene algo no válido
+    return d.toLocaleDateString('es-ES'); // formato: dd/mm/yyyy
+  }
+
+  // ---- Traer datos de API ----
+  async function fetchDatos(){
+    try{
+      const [refRes, liqRes]=await Promise.all([
+        fetch(`${API_URL}/referenciales`),
+        fetch(`${API_URL}/liquidos`)
+      ]);
+
+      referenciales = await refRes.json();
+      liquidos = await liqRes.json();
+
+      cargarTablas();
+      //mostrarProximosACaducar();
+      mostrarCaducados();
+      alertarProximasCaducidades10Dias();
+      setTimeout(alertarInicial5Dias, 0);
+      //alertarInicial10Dias();
+
+    } catch(err) {
+      console.error(err);
+      alert("Error al conectar con el servidor");
+    }
+}
+
+  /*function pedirAutorizacionModal() {
+    return new Promise(resolve => {
+      const modal = document.getElementById("modalAuth");
+      const inputUsuario = document.getElementById("authUsuario");
+      const inputPassword = document.getElementById("authPassword");
+      const btnAceptar = document.getElementById("btnAuth");
+      const btnCancelar = document.getElementById("btnCancelAuth");
+
+      inputUsuario.value = "";
+      inputPassword.value = "";
+
+      modal.style.display = "flex";
+
+      btnAceptar.onclick = () => {
+        const username = inputUsuario.value.trim();
+        const password = inputPassword.value;
+        if (!username || !password) return alert("Usuario y contraseña requeridos");
+        modal.style.display = "none";
+        resolve({ username, password });
+      };
+
+      btnCancelar.onclick = () => {
+        modal.style.display = "none";
+        resolve(null);
+      };
+    });
+  }*/
+
+  // Devuelve un array con las ubicaciones seleccionadas
+  function getUbicacionesSeleccionadas() {
+    const select = document.getElementById("modalCampo2");
+    return Array.from(select.selectedOptions).map(opt => opt.value);
+  }
+
+  // Marca en el select las ubicaciones ya guardadas
+  function setUbicacionesSeleccionadas(ubicacionStr) {
+    const select = document.getElementById("modalCampo2");
+    const ubicaciones = ubicacionStr ? ubicacionStr.split(",").map(u => u.trim()) : [];
+    Array.from(select.options).forEach(opt => {
+      opt.selected = ubicaciones.includes(opt.value);
+    });
+  }
+
+  // ---- ALERTA INICIAL 5 DÍAS ----
+  function alertarInicial5Dias() {
+    const hoy = new Date();
+    const diasAviso = 5;
+    let alertas = [];
+
+    referenciales.forEach(ref => {
+      const fechaCad = new Date(ref.fecha_cad);
+      const diasRestantes = Math.ceil((fechaCad - hoy) / (1000 * 60 * 60 * 24));
+      if (diasRestantes > 0 && diasRestantes <= diasAviso) {
+        alertas.push(`El referencial ${ref.cq} de la ${ref.ubicacion} caduca en ${diasRestantes} días (Fecha: ${formatDate(ref.fecha_cad)})`);
+      }
+    });
+
+    liquidos.forEach(liq => {
+      const fechaCad = new Date(liq.fecha_cad);
+      const diasRestantes = Math.ceil((fechaCad - hoy) / (1000 * 60 * 60 * 24));
+      if (diasRestantes > 0 && diasRestantes <= diasAviso) {
+        alertas.push(`El líquido ${liq.nombre} de la ${liq.ubicacion} caduca en ${diasRestantes} días (Fecha: ${formatDate(liq.fecha_cad)})`);
+      }
+    });
+
+    if (alertas.length > 0) {
+      alert("⚠ Productos próximos a caducar en los próximos 5 días:\n\n" + alertas.join("\n"));
+    }
+  }
+
+  // Permitir seleccionar varias máquinas solo con clic, pero solo si el select está habilitado
+  const selectUbicaciones = document.getElementById("modalCampo2");
+  Array.from(selectUbicaciones.options).forEach(opt => {
+    opt.addEventListener("mousedown", function(e) {
+      // Si el select está deshabilitado, no permitir selección
+      if (selectUbicaciones.disabled) {
+        e.preventDefault();
+        return false;
+      }
+      e.preventDefault();
+      opt.selected = !opt.selected;
+      return false;
+    });
+  });
+
+  // Devuelve un array con las ubicaciones seleccionadas
+  function getUbicacionesSeleccionadas() {
+    const select = document.getElementById("modalCampo2");
+    return Array.from(select.options).filter(opt => opt.selected).map(opt => opt.value);
+  }
+
+  // Marca en el select las ubicaciones ya guardadas (separadas por coma)
+  function setUbicacionesSeleccionadas(ubicacionStr) {
+    const select = document.getElementById("modalCampo2");
+    const ubicaciones = ubicacionStr ? ubicacionStr.split(",").map(u => u.trim()) : [];
+    Array.from(select.options).forEach(opt => {
+      opt.selected = ubicaciones.includes(opt.value);
+    });
+  }
+
+  // ---- Cargar tablas ----
+  function cargarTablas() {
+    const cuerpoRef = document.querySelector("#tablaReferenciales tbody");
+    const cuerpoLiq = document.querySelector("#tablaLiquidos tbody");
+    cuerpoRef.innerHTML = "";
+    cuerpoLiq.innerHTML = "";
+
+    const hoy = new Date();
+    const unMes = 30 * 24 * 60 * 60 * 1000;
+    const diasAviso = 10;
+
+    // === REFERENCIALES ===
+    referenciales.forEach((ref, index) => {
+      if (ref.cerrado) return;
+      const fechaCad = new Date(ref.fecha_cad);
+      const diasRestantes = Math.ceil((fechaCad - hoy) / (1000 * 60 * 60 * 24));
+      let textoCad = formatDate(ref.fecha_cad);
+      let tooltip = "";
+      if(diasRestantes > 0 && diasRestantes <= diasAviso){
+        textoCad += ` (caduca en ${diasRestantes} días)`;
+        tooltip = `Producto próximo a caducar: quedan ${diasRestantes} días`;
+      }
+      if (fechaCad < hoy) {
+        tooltip = "Producto caducado";
+      }
+      const fila = document.createElement("tr");
+      fila.innerHTML = `
+        <td>${ref.cq}</td>
+        <td>${ref.ubicacion}</td>
+        <td>${formatDate(ref.fecha_intro)}</td>
+        <td>${textoCad}</td>
+      `;
+      if (fechaCad < hoy) {
+        fila.classList.add("caducado");
+      } else if (diasRestantes > 0 && diasRestantes <= diasAviso) {
+        fila.classList.add("proximo");
+      }
+      if (tooltip) fila.title = tooltip;
+      fila.onclick = () => {
+        referencialesSeleccionada = index;
+        liquidoSeleccionado = -1;
+        document.querySelectorAll("#tablaReferenciales tr").forEach(r => r.classList.remove("selected"));
+        fila.classList.add("selected");
+      };
+      fila.ondblclick = () => abrirModal("referencial", index);
+      cuerpoRef.appendChild(fila);
+    });
+
+    // === LÍQUIDOS ===
+    liquidos.forEach((liq, index) => {
+      if (liq.cerrado) return;
+      const fechaCad = new Date(liq.fecha_cad);
+      const diasRestantes = Math.ceil((fechaCad - hoy) / (1000 * 60 * 60 * 24));
+      let textoCad = formatDate(liq.fecha_cad);
+      let tooltip = "";
+      if(diasRestantes > 0 && diasRestantes <= diasAviso){
+        textoCad += ` (${diasRestantes} días restantes)`;
+        tooltip = `Producto próximo a caducar: quedan ${diasRestantes} días`;
+      }
+      if (fechaCad < hoy) {
+        tooltip = "Producto caducado";
+      }
+      const fila = document.createElement("tr");
+      fila.innerHTML = `
+        <td>${liq.nombre}</td>
+        <td>${liq.ubicacion}</td>
+        <td>${formatDate(liq.fecha_intro)}</td>
+        <td>${textoCad}</td>
+        <td>${liq.orr || ''}</td>
+        <td>${formatDate(liq.fecha_reg)}</td>
+      `;
+      if (fechaCad < hoy) {
+        fila.classList.add("caducado");
+      } else if (diasRestantes > 0 && diasRestantes <= diasAviso) {
+        fila.classList.add("proximo");
+      }
+      if (tooltip) fila.title = tooltip;
+      fila.onclick = () => {
+        liquidoSeleccionado = index;
+        referencialesSeleccionada = -1;
+        document.querySelectorAll("#tablaLiquidos tr").forEach(r => r.classList.remove("selected"));
+        fila.classList.add("selected");
+      };
+      fila.ondblclick = () => abrirModal("liquido", index);
+      cuerpoLiq.appendChild(fila);
+    });
+
+    actualizarModalCerrados();
+  }
+
+  function actualizarModalCerrados() {
+    const contenedor = document.getElementById("productosCerradosList");
+    contenedor.innerHTML = "";
+
+    // --- REFERENCIALES CERRADOS ---
+    let refCerrados = referenciales.filter(ref => ref.cerrado);
+    let liqCerrados = liquidos.filter(liq => liq.cerrado);
+
+    // Ordenar por fecha_cierre descendente (más recientes primero)
+    refCerrados = refCerrados.slice().sort((a, b) => {
+      const fa = a.fecha_cierre ? new Date(a.fecha_cierre) : new Date(0);
+      const fb = b.fecha_cierre ? new Date(b.fecha_cierre) : new Date(0);
+      return fb - fa;
+    });
+    liqCerrados = liqCerrados.slice().sort((a, b) => {
+      const fa = a.fecha_cierre ? new Date(a.fecha_cierre) : new Date(0);
+      const fb = b.fecha_cierre ? new Date(b.fecha_cierre) : new Date(0);
+      return fb - fa;
+    });
+
+    // Tabla de referenciales cerrados
+    const tablaRef = document.createElement("table");
+    tablaRef.style.width = "100%";
+    tablaRef.style.marginBottom = "20px";
+    tablaRef.innerHTML = `
+      <caption style='font-weight:bold;text-align:left;margin-bottom:4px;'>Referenciales cerrados</caption>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>CQ</th>
+          <th>Ubicación</th>
+          <th>Fecha introducción</th>
+          <th>Fecha caducidad</th>
+          <th>Fecha cierre</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    `;
+    const tbodyRef = tablaRef.querySelector("tbody");
+    refCerrados.forEach(ref => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${ref.id}</td>
+        <td>${ref.cq}</td>
+        <td>${ref.ubicacion || ""}</td>
+        <td>${ref.fecha_intro ? formatDate(ref.fecha_intro) : ""}</td>
+        <td>${ref.fecha_cad ? formatDate(ref.fecha_cad) : ""}</td>
+        <td>${ref.fecha_cierre ? formatDate(ref.fecha_cierre) : ""}</td>
+      `;
+      tbodyRef.appendChild(tr);
+    });
+
+    // Tabla de líquidos cerrados
+    const tablaLiq = document.createElement("table");
+    tablaLiq.style.width = "100%";
+    tablaLiq.innerHTML = `
+      <caption style='font-weight:bold;text-align:left;margin-bottom:4px;'>Líquidos cerrados</caption>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Nombre</th>
+          <th>Ubicación</th>
+          <th>Fecha introducción</th>
+          <th>Fecha caducidad</th>
+          <th>OR</th>
+          <th>Fecha registro</th>
+          <th>Fecha cierre</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    `;
+    const tbodyLiq = tablaLiq.querySelector("tbody");
+    liqCerrados.forEach(liq => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${liq.id}</td>
+        <td>${liq.nombre}</td>
+        <td>${liq.ubicacion || ""}</td>
+        <td>${liq.fecha_intro ? formatDate(liq.fecha_intro) : ""}</td>
+        <td>${liq.fecha_cad ? formatDate(liq.fecha_cad) : ""}</td>
+        <td>${liq.orr || ""}</td>
+        <td>${liq.fecha_reg ? formatDate(liq.fecha_reg) : ""}</td>
+        <td>${liq.fecha_cierre ? formatDate(liq.fecha_cierre) : ""}</td>
+      `;
+      tbodyLiq.appendChild(tr);
+    });
+
+    if (refCerrados.length === 0 && liqCerrados.length === 0) {
+      contenedor.innerHTML = '<div style="color:#888;text-align:center;">No hay productos cerrados.</div>';
+    } else {
+      if (refCerrados.length > 0) contenedor.appendChild(tablaRef);
+      if (liqCerrados.length > 0) contenedor.appendChild(tablaLiq);
+    }
+  }
+
+    // === LÍQUIDOS ===
+    liquidos.forEach((liq, index) => {
+      const fechaCad = new Date(liq.fecha_cad);
+      const diasRestantes = Math.ceil((fechaCad - hoy) / (1000 * 60 * 60 * 24));
+      
+      let textoCad = formatDate(liq.fecha_cad);
+      if(diasRestantes > 0 && diasRestantes <= diasAviso){
+        textoCad += ` (${diasRestantes} días restantes)`;
+      }
+
+      const fila = document.createElement("tr");
+      fila.innerHTML = `
+        <td>${liq.nombre}</td>
+        <td>${liq.ubicacion}</td>
+        <td>${formatDate(liq.fecha_intro)}</td>
+        <td>${textoCad}</td>
+        <td>${liq.orr || ''}</td>
+        <td>${formatDate(liq.fecha_reg)}</td>
+      `;
+
+      if (fechaCad < hoy) {
+        fila.classList.add("caducado");
+      } else if (fechaCad - hoy <= unMes) {
+        fila.classList.add("proximo");
+      }
+
+      fila.onclick = () => {
+        liquidoSeleccionado = index;
+        referencialesSeleccionada = -1;
+        document.querySelectorAll("#tablaLiquidos tr").forEach(r => r.classList.remove("selected"));
+        fila.classList.add("selected");
+      };
+
+      fila.ondblclick = () => abrirModal("liquido", index);
+
+      cuerpoLiq.appendChild(fila);
+    });
+    actualizarModalCerrados();
+
+  // ---- Alertas ----
+  /*function mostrarProximosACaducar() {
+    const hoy = new Date();
+    const unMes = 30 * 24 * 60 * 60 * 1000;
+    const tbody = document.querySelector("#productosProximos tbody");
+    tbody.innerHTML = "";
+
+    referenciales.forEach((ref, index) => {
+      const fechaCad = new Date(ref.fecha_cad);
+      if (fechaCad - hoy > 0 && fechaCad - hoy <= unMes) {
+        const fila = document.createElement("tr");
+        fila.innerHTML = `
+          <td>Referencial: ${ref.cq}</td>
+          <td>${ref.ubicacion}</td>
+          <td>${formatDate(ref.fecha_cad)}</td>
+        `;
+        fila.style.backgroundColor = "#ffcccc";
+        fila.style.cursor = "pointer";
+
+        fila.onclick = () => {
+          referencialesSeleccionada = index;
+          liquidoSeleccionado = -1;
+          cargarTablas();
+          document.querySelector("#tablaReferenciales tbody").children[index].classList.add("selected");
+        };
+
+        tbody.appendChild(fila);
+      }
+    });
+
+    liquidos.forEach((liq, index) => {
+      const fechaCad = new Date(liq.fecha_cad);
+      if (fechaCad - hoy > 0 && fechaCad - hoy <= unMes) {
+        const fila = document.createElement("tr");
+        fila.innerHTML = `
+          <td>Líquido: ${liq.nombre}</td>
+          <td>${liq.ubicacion}</td>
+          <td>${formatDate(liq.fecha_cad)}</td>
+        `;
+        fila.style.backgroundColor = "#ffcccc";
+        fila.style.cursor = "pointer";
+
+        fila.onclick = () => {
+          liquidoSeleccionado = index;
+          referencialesSeleccionada = -1;
+          cargarTablas();
+          document.querySelector("#tablaLiquidos tbody").children[index].classList.add("selected");
+        };
+
+        tbody.appendChild(fila);
+      }
+    });
+  }*/
+
+  // Cerrar un producto y poner cerrado=true
+  async function cerrarProducto(tipo, id) {
+    try {
+      let url = "";
+      if (tipo === "referencial") {
+        url = `${API_URL}/cerrar_referencial/${id}`;
+      } else {
+        url = `${API_URL}/cerrar_liquido/${id}`;
+      }
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
+      if (!resp.ok) {
+        let msg = "";
+        try {
+          const data = await resp.json();
+          msg = data.message || resp.statusText;
+        } catch {
+          msg = resp.statusText;
+        }
+        alert("Error al cerrar producto: " + msg);
+        return;
+      }
+      await fetchDatos();
+    } catch (err) {
+      alert("Error de red al cerrar producto");
+    }
+  }
+
+  // Mostrar caducados
+  function mostrarCaducados() {
+    const hoy = new Date();
+    const tbody = document.querySelector("#seccionCaducados tbody");
+    const seccion = document.getElementById("seccionCaducados");
+    tbody.innerHTML = "";
+
+    let hayCaducados = false;
+
+    // --- REFERENCIALES ---
+    referenciales.forEach((ref, index) => {
+      const fechaCad = new Date(ref.fecha_cad);
+      if (!ref.cerrado && fechaCad < hoy) {
+        hayCaducados = true;
+        const fila = document.createElement("tr");
+        fila.innerHTML = `
+          <td>Referencial: ${ref.cq}</td>
+          <td>${ref.ubicacion}</td>
+          <td>${formatDate(ref.fecha_cad)}</td>
+        `;
+        fila.classList.add("caducado");
+        fila.style.cursor = "pointer";
+        fila.title = "Producto caducado";
+        fila.onclick = () => {
+          referencialesSeleccionada = index;
+          liquidoSeleccionado = -1;
+          cargarTablas();
+          const filaTabla = document.querySelector("#tablaReferenciales tbody").children[index];
+          filaTabla.classList.add("selected");
+          filaTabla.scrollIntoView({ behavior: "smooth", block: "center" });
+        };
+        tbody.appendChild(fila);
+      }
+    });
+
+    // --- LÍQUIDOS ---
+    liquidos.forEach((liq, index) => {
+      const fechaCad = new Date(liq.fecha_cad);
+      if (!liq.cerrado && fechaCad < hoy) {
+        hayCaducados = true;
+        const fila = document.createElement("tr");
+        fila.innerHTML = `
+          <td>Líquido: ${liq.nombre}</td>
+          <td>${liq.ubicacion}</td>
+          <td>${formatDate(liq.fecha_cad)}</td>
+        `;
+        fila.classList.add("caducado");
+        fila.style.cursor = "pointer";
+        fila.title = "Producto caducado";
+        fila.onclick = () => {
+          liquidoSeleccionado = index;
+          referencialesSeleccionada = -1;
+          cargarTablas();
+          const filaTabla = document.querySelector("#tablaLiquidos tbody").children[index];
+          filaTabla.classList.add("selected");
+          filaTabla.scrollIntoView({ behavior: "smooth", block: "center" });
+        };
+        tbody.appendChild(fila);
+      }
+    });
+
+    // Mostrar u ocultar la sección
+    seccion.style.display = hayCaducados ? "block" : "none";
+  }
+
+  function alertarProximasCaducidades10Dias() {
+    const hoy = new Date();
+    const diasAviso = 10;
+    let alertas = [];
+
+    referenciales.forEach((ref, index) => {
+      if (ref.cerrado) return;
+      if (!ref.fecha_cad) return;
+      const fechaCad = new Date(ref.fecha_cad);
+      const diasRestantes = Math.ceil((fechaCad - hoy) / (1000*60*60*24));
+      if (diasRestantes > 0 && diasRestantes <= diasAviso) {
+        alertas.push({ 
+          tipo: "referencial", 
+          index: index, 
+          text: `El referencial ${ref.cq} de la ${ref.ubicacion} caduca en ${diasRestantes} días (Fecha: ${formatDate(ref.fecha_cad)})` 
+        });
+      }
+    });
+
+    liquidos.forEach((liq, index) => {
+      if (liq.cerrado) return;
+      if (!liq.fecha_cad) return;
+      const fechaCad = new Date(liq.fecha_cad);
+      const diasRestantes = Math.ceil((fechaCad - hoy) / (1000*60*60*24));
+      if (diasRestantes > 0 && diasRestantes <= diasAviso) {
+        alertas.push({ 
+          tipo: "liquido", 
+          index: index, 
+          text: `El líquido ${liq.nombre} de la ${liq.ubicacion} caduca en ${diasRestantes} días (Fecha: ${formatDate(liq.fecha_cad)})` 
+        });
+      }
+    });
+
+
+    const divAlerta = document.getElementById("alertaCaducidad");
+    if (alertas.length > 0) {
+    divAlerta.style.display = "block";
+    divAlerta.innerHTML = `<strong>⚠ Productos próximos a caducar en los próximos 10 días:</strong><br>`;
+
+    alertas.forEach((item, idx) => {
+      const span = document.createElement("span");
+      span.style.cursor = "pointer";
+      span.style.textDecoration = "underline";
+      span.style.color = "#003f87";
+      span.style.display = "block";
+      span.style.margin = "3px 0";
+
+      span.dataset.tipo = item.tipo;
+      span.dataset.index = item.index;
+      span.textContent = item.text;
+      span.title = "Producto próximo a caducar";
+
+      span.onclick = () => {
+        const tipo = span.dataset.tipo;
+        const index = parseInt(span.dataset.index);
+
+        if (tipo === "referencial") {
+          referencialesSeleccionada = index;
+          liquidoSeleccionado = -1;
+          cargarTablas();
+          const fila = document.querySelector("#tablaReferenciales tbody").children[index];
+          fila.classList.add("selected");
+          fila.scrollIntoView({ behavior: "smooth", block: "center" });
+        } else {
+          liquidoSeleccionado = index;
+          referencialesSeleccionada = -1;
+          cargarTablas();
+          const fila = document.querySelector("#tablaLiquidos tbody").children[index];
+          fila.classList.add("selected");
+          fila.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      };
+
+      divAlerta.appendChild(span);
+    });
+
+  } else {
+    divAlerta.style.display = "none";
+  }
+
+  }
+
+  // ---- Modal ----
+  function abrirModal(tipo, index) {
+    tipoSeleccionado = tipo;
+    indiceSeleccionado = index;
+
+    const modal = document.getElementById("modalProducto");
+    const titulo = document.getElementById("modalTitulo");
+    const c1 = document.getElementById("modalCampo1");
+    const c2 = document.getElementById("modalCampo2");
+    const c3 = document.getElementById("modalCampo3");
+    const c4 = document.getElementById("modalCampo4");
+    const c5 = document.getElementById("modalCampo5");
+    const c6 = document.getElementById("modalCampo6");
+
+    // Todos los campos readonly y el select de ubicaciones deshabilitado
+    [c1, c3, c4, c5, c6].forEach(c => c.setAttribute("readonly", true));
+    c2.setAttribute("disabled", true);
+    document.getElementById("labelCampo1").textContent = tipo === "referencial" ? "CQ" : "Nombre";
+    document.getElementById("modalProducto").style.display = "flex";
+
+    document.getElementById("btnModificarModal").style.display = "inline-block";
+    document.getElementById("btnGuardarModal").style.display = "none";
+    document.getElementById("btnEliminarModal").style.display = "inline-block";
+    document.getElementById("btnCerrarModal").style.display = "inline-block";
+
+    const item = (tipo === "referencial") ? referenciales[index] : liquidos[index];
+    titulo.textContent = (tipo === "referencial") ? "Referencial" : "Líquido";
+    labelCampo1.textContent = (tipo === "referencial") ? "CQ" : "Nombre";
+    c1.value = (tipo === "referencial") ? item.cq : item.nombre;
+    setUbicacionesSeleccionadas(item.ubicacion);
+    c3.value = formatDate(item.fecha_intro);
+    c4.value = formatDate(item.fecha_cad);
+    c5.value = item.orr || "";
+    c6.value = formatDate(item.fecha_reg) || "";
+
+    [c1, c2, c3, c4,c5 ,c6].forEach(c => c.style.borderColor = "#ccc");
+
+    modal.style.display = "flex";
+  }
+
+  function abrirModalNuevo(tipo) {
+    tipoSeleccionado = tipo;
+    indiceSeleccionado = null;
+
+    const modal = document.getElementById("modalProducto");
+    const titulo = document.getElementById("modalTitulo");
+    const c1 = document.getElementById("modalCampo1");
+    const c2 = document.getElementById("modalCampo2");
+    const c3 = document.getElementById("modalCampo3");
+    const c4 = document.getElementById("modalCampo4");
+    const c5 = document.getElementById("modalCampo5");
+    const c6 = document.getElementById("modalCampo6");
+
+  [c1, c3, c4, c5, c6].forEach(c => c.removeAttribute("readonly"));
+  c2.removeAttribute("disabled");
+  c1.value = ""; setUbicacionesSeleccionadas(""); c3.value = ""; c4.value = ""; c5.value = ""; c6.value = "";
+
+    [c1, c2, c3, c4, c5, c6].forEach(c => c.style.borderColor = "#ccc");
+
+    titulo.textContent = (tipo === "referencial") ? "Nuevo Referencial" : "Nuevo Líquido";
+
+    document.getElementById("btnModificarModal").style.display = "none";
+    document.getElementById("btnEliminarModal").style.display = "none";
+    document.getElementById("btnGuardarModal").style.display = "inline-block";
+    document.getElementById("btnCerrarModal").style.display = "none";
+    const label1 = document.getElementById("labelCampo1");
+    const campo1 = document.getElementById("modalCampo1");
+    if (tipo === "referencial") {
+      label1.textContent = "CQ";
+      campo1.placeholder = "CQ";
+    } else {
+      label1.textContent = "Nombre";
+      campo1.placeholder = "Nombre";
+    }
+    modal.style.display = "flex";
+  }
+
+  document.getElementById("btnSalirModal").onclick = () => {
+    document.getElementById("modalProducto").style.display = "none";
+  };
+  document.getElementById("btnCerrarXModal").onclick = () => {
+    document.getElementById("modalProducto").style.display = "none";
+  };
+
+  document.getElementById("btnCerrarCerrados").onclick = () => {
+    document.getElementById("modalCerrados").style.display = "none";
+  };
+  document.getElementById("btnCerrarXCerrados").onclick = () => {
+    document.getElementById("modalCerrados").style.display = "none";
+  };
+
+  document.getElementById("btnModificarModal").onclick = () => {
+    // Permitir editar todos los campos al pulsar Modificar
+    ["modalCampo1","modalCampo3","modalCampo4","modalCampo5","modalCampo6"].forEach(id => {
+      document.getElementById(id).removeAttribute("readonly");
+    });
+    document.getElementById("modalCampo2").removeAttribute("disabled");
+    document.getElementById("btnModificarModal").style.display = "none";
+    document.getElementById("btnGuardarModal").style.display = "inline-block";
+  };
+
+  ["modalCampo1", "modalCampo2", "modalCampo3", "modalCampo4", "modalCampo5", "modalCampo6"].forEach(id => {
+    const campo = document.getElementById(id);
+    campo.addEventListener("input", () => {
+      if (campo.value.trim()) {
+        campo.style.borderColor = "#ccc";
+      }
+    });
+  });
+
+
+  function abrirModalCerrados() {
+    const modal = document.getElementById("modalCerrados");
+    modal.style.display = "flex";
+    actualizarModalCerrados();
+  }
+  
+  // Cerrar producto al hacer clic en "Cerrar" en el modal, es decir, poner cerrado=true
+  document.getElementById("btnCerrarModal").onclick = async () => {
+  if (indiceSeleccionado === null) return alert("No hay ningún producto seleccionado para cerrar.");
+  if (!confirm("¿Seguro que quieres cerrar este producto? Esta acción no se puede deshacer.")) return;
+  const tipo = tipoSeleccionado;
+  const id = (tipo === "referencial") ? referenciales[indiceSeleccionado].id : liquidos[indiceSeleccionado].id;
+  await cerrarProducto(tipo, id);
+  document.getElementById("modalProducto").style.display = "none";
+  alert("✅ Producto cerrado correctamente.");
+  };
+
+  // ---- Guardar cambios ----
+  document.getElementById("btnGuardarModal").onclick = async () => {
+    const campos = [
+      document.getElementById("modalCampo1"), // CQ / nombre
+      document.getElementById("modalCampo2"), // ubicación (select multiple)
+      document.getElementById("modalCampo3"), // fecha introducción
+      document.getElementById("modalCampo4"), // fecha caducidad
+      document.getElementById("modalCampo5"), // ORR
+      document.getElementById("modalCampo6")  // fecha registro
+    ];
+
+    // Reset de estilos
+    campos.forEach(c => c.style.borderColor = "#ccc");
+
+    let hayVacios = false;
+
+    // Validar campo 1 (nombre)
+    if (!campos[0].value.trim()) {
+      campos[0].style.borderColor = "red";
+      hayVacios = true;
+    }
+
+    // Validar ubicaciones (select multiple)
+    if (getUbicacionesSeleccionadas().length === 0) {
+      campos[1].style.borderColor = "red";
+      hayVacios = true;
+    }
+
+    // Validar fechas
+    if (!campos[2].value.trim()) {
+      campos[2].style.borderColor = "red";
+      hayVacios = true;
+    }
+    if (!campos[3].value.trim()) {
+      campos[3].style.borderColor = "red";
+      hayVacios = true;
+    }
+
+    // Validar ORR y fecha_reg si es líquido
+    if (tipoSeleccionado === "liquido") {
+      if (!campos[4].value.trim()) {
+        campos[4].style.borderColor = "red";
+        hayVacios = true;
+      }
+      if (!campos[5].value.trim()) {
+        campos[5].style.borderColor = "red";
+        hayVacios = true;
+      }
+    }
+
+    if (hayVacios) return alert("❌ Todos los campos son obligatorios");
+
+    // --- Construir objeto body ---
+    const body = {
+      cq: campos[0].value.trim(),
+      nombre: campos[0].value.trim(),
+      ubicacion: getUbicacionesSeleccionadas().join(", "), // 🔹 aquí está la clave
+      fecha_intro: campos[2].value.trim(),
+      fecha_cad: campos[3].value.trim(),
+      orr: campos[4].value.trim() || null,
+      fecha_reg: campos[5].value.trim() || null,
+    };
+
+    try {
+      const url = indiceSeleccionado === null
+        ? `${API_URL}/${tipoSeleccionado === "referencial" ? "referenciales" : "liquidos"}`
+        : `${API_URL}/${tipoSeleccionado === "referencial" ? "referenciales" : "liquidos"}/${tipoSeleccionado === "referencial" ? referenciales[indiceSeleccionado].id : liquidos[indiceSeleccionado].id}`;
+
+      const metodo = indiceSeleccionado === null ? "POST" : "PUT";
+
+      const res = await fetch(url, {
+        method: metodo,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        return alert("❌ Error: " + (error.message || "No se pudo guardar el producto"));
+      }
+
+      fetchDatos();
+      document.getElementById("modalProducto").style.display = "none";
+      alert("✅ Producto guardado correctamente.");
+    } catch (err) {
+      console.error(err);
+      alert("❌ Error al guardar");
+    }
+  };
+
+  // ---- Eliminar ----
+  document.getElementById("btnEliminarModal").onclick = async () => {
+    /*const auth = await pedirAutorizacionModal();
+    if (!auth) return;
+
+    const { username, password } = auth;*/
+
+    if (confirm("⚠ ¿Desea eliminar este producto?")) {
+      try {
+        const id = tipoSeleccionado === "referencial"
+          ? referenciales[indiceSeleccionado].id
+          : liquidos[indiceSeleccionado].id;
+
+        const res = await fetch(
+          `${API_URL}/${tipoSeleccionado === "referencial" ? "referenciales" : "liquidos"}/${id}`,
+          //{ method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username, password }) }
+          { method: "DELETE" }
+        );
+
+        //if (res.status === 401) return alert("❌ Usuario o contraseña incorrectos");
+
+        fetchDatos();
+        document.getElementById("modalProducto").style.display = "none";
+        alert("✅ Producto eliminado.");
+      } catch (err) {
+        console.error(err);
+        alert("Error al eliminar");
+      }
+    }
+  };
+
+  // ---- Filtrar por buscador nombre/cq, ubicacion ----
+  function filtrarReferenciales() {
+    const texto = document.getElementById("buscarReferenciales").value.toLowerCase();
+    const cuerpoRef = document.querySelector("#tablaReferenciales tbody");
+    cuerpoRef.innerHTML = "";
+
+    const hoy = new Date();
+    const unMes = 30 * 24 * 60 * 60 * 1000;
+    const diasAviso = 10;
+
+    referenciales.forEach((ref, index) => {
+      if (!ref.cq.toLowerCase().includes(texto) && !ref.ubicacion.toLowerCase().includes(texto)) return;
+
+      const fechaCad = new Date(ref.fecha_cad);
+      const diasRestantes = Math.ceil((fechaCad - hoy) / (1000 * 60 * 60 * 24));
+      let textoCad = formatDate(ref.fecha_cad);
+      if (diasRestantes > 0 && diasRestantes <= diasAviso) {
+        textoCad += ` (${diasRestantes} días restantes)`;
+      }
+
+      const fila = document.createElement("tr");
+      fila.innerHTML = `
+        <td>${ref.cq}</td>
+        <td>${ref.ubicacion}</td>
+        <td>${formatDate(ref.fecha_intro)}</td>
+        <td>${textoCad}</td>
+      `;
+
+      if (fechaCad < hoy) fila.classList.add("caducado");
+      else if (fechaCad - hoy <= unMes) fila.classList.add("proximo");
+
+      fila.onclick = () => {
+        referencialesSeleccionada = index;
+        liquidoSeleccionado = -1;
+        document.querySelectorAll("#tablaReferenciales tr").forEach(r => r.classList.remove("selected"));
+        fila.classList.add("selected");
+      };
+
+      fila.ondblclick = () => abrirModal("referencial", index);
+
+      cuerpoRef.appendChild(fila);
+    });
+  }
+
+  function filtrarLiquidos() {
+    const texto = document.getElementById("buscarLiquido").value.toLowerCase();
+    const cuerpoLiq = document.querySelector("#tablaLiquidos tbody");
+    cuerpoLiq.innerHTML = "";
+
+    const hoy = new Date();
+    const unMes = 30 * 24 * 60 * 60 * 1000;
+    const diasAviso = 10;
+
+    liquidos.forEach((liq, index) => {
+      if (!liq.nombre.toLowerCase().includes(texto) && !liq.ubicacion.toLowerCase().includes(texto)) return;
+
+      const fechaCad = new Date(liq.fecha_cad);
+      const diasRestantes = Math.ceil((fechaCad - hoy) / (1000 * 60 * 60 * 24));
+      let textoCad = formatDate(liq.fecha_cad);
+      if (diasRestantes > 0 && diasRestantes <= diasAviso) {
+        textoCad += ` (${diasRestantes} días restantes)`;
+      }
+
+      const fila = document.createElement("tr");
+      fila.innerHTML = `
+        <td>${liq.nombre}</td>
+        <td>${liq.ubicacion}</td>
+        <td>${formatDate(liq.fecha_intro)}</td>
+        <td>${textoCad}</td>
+        <td>${liq.orr || ''}</td>
+        <td>${formatDate(liq.fecha_reg) || ''}</td>
+      `;
+
+      if (fechaCad < hoy) fila.classList.add("caducado");
+      else if (fechaCad - hoy <= unMes) fila.classList.add("proximo");
+
+      fila.onclick = () => {
+        liquidoSeleccionado = index;
+        referencialesSeleccionada = -1;
+        document.querySelectorAll("#tablaLiquidos tr").forEach(r => r.classList.remove("selected"));
+        fila.classList.add("selected");
+      };
+
+      fila.ondblclick = () => abrirModal("liquido", index);
+
+      cuerpoLiq.appendChild(fila);
+    });
+  }
+
+  // Filtrar por OR en referenciales (si tuvieras OR en esa tabla)
+  function filtrarReferencialesOR() {
+    const texto = document.getElementById("buscarReferencialesOR").value.toLowerCase();
+    const cuerpoRef = document.querySelector("#tablaReferenciales tbody");
+    cuerpoRef.innerHTML = "";
+
+    const hoy = new Date();
+    const unMes = 30 * 24 * 60 * 60 * 1000;
+    const diasAviso = 10;
+
+    referenciales.forEach((ref, index) => {
+      if (!ref.orr || !ref.orr.toLowerCase().includes(texto)) return;
+
+      const fechaCad = new Date(ref.fecha_cad);
+      const diasRestantes = Math.ceil((fechaCad - hoy) / (1000 * 60 * 60 * 24));
+      let textoCad = formatDate(ref.fecha_cad);
+      if (diasRestantes > 0 && diasRestantes <= diasAviso) {
+        textoCad += ` (${diasRestantes} días restantes)`;
+      }
+
+      const fila = document.createElement("tr");
+      fila.innerHTML = `
+        <td>${ref.cq}</td>
+        <td>${ref.ubicacion}</td>
+        <td>${formatDate(ref.fecha_intro)}</td>
+        <td>${textoCad}</td>
+      `;
+
+      if (fechaCad < hoy) fila.classList.add("caducado");
+      else if (fechaCad - hoy <= unMes) fila.classList.add("proximo");
+
+      fila.onclick = () => {
+        referencialesSeleccionada = index;
+        liquidoSeleccionado = -1;
+        document.querySelectorAll("#tablaReferenciales tr").forEach(r => r.classList.remove("selected"));
+        fila.classList.add("selected");
+      };
+
+      fila.ondblclick = () => abrirModal("referencial", index);
+
+      cuerpoRef.appendChild(fila);
+    });
+  }
+
+  // Filtrar por OR en líquidos
+  function filtrarLiquidosOR() {
+    const texto = document.getElementById("buscarLiquidoOR").value.toLowerCase();
+    const cuerpoLiq = document.querySelector("#tablaLiquidos tbody");
+    cuerpoLiq.innerHTML = "";
+
+    const hoy = new Date();
+    const unMes = 30 * 24 * 60 * 60 * 1000;
+    const diasAviso = 10;
+
+    liquidos.forEach((liq, index) => {
+      if (!liq.orr || !liq.orr.toLowerCase().includes(texto)) return;
+
+      const fechaCad = new Date(liq.fecha_cad);
+      const diasRestantes = Math.ceil((fechaCad - hoy) / (1000 * 60 * 60 * 24));
+      let textoCad = formatDate(liq.fecha_cad);
+      if (diasRestantes > 0 && diasRestantes <= diasAviso) {
+        textoCad += ` (${diasRestantes} días restantes)`;
+      }
+
+      const fila = document.createElement("tr");
+      fila.innerHTML = `
+        <td>${liq.nombre}</td>
+        <td>${liq.ubicacion}</td>
+        <td>${formatDate(liq.fecha_intro)}</td>
+        <td>${textoCad}</td>
+        <td>${liq.orr || ''}</td>
+        <td>${formatDate(liq.fecha_reg) || ''}</td>
+      `;
+
+      if (fechaCad < hoy) fila.classList.add("caducado");
+      else if (fechaCad - hoy <= unMes) fila.classList.add("proximo");
+
+      fila.onclick = () => {
+        liquidoSeleccionado = index;
+        referencialesSeleccionada = -1;
+        document.querySelectorAll("#tablaLiquidos tr").forEach(r => r.classList.remove("selected"));
+        fila.classList.add("selected");
+      };
+
+      fila.ondblclick = () => abrirModal("liquido", index);
+
+      cuerpoLiq.appendChild(fila);
+    });
+  }
+
+  document.getElementById("buscarReferencialesOR").oninput = filtrarReferencialesOR;
+  document.getElementById("buscarLiquidoOR").oninput = filtrarLiquidosOR;
+
+  document.getElementById("buscarReferenciales").oninput = filtrarReferenciales;
+  document.getElementById("buscarLiquido").oninput = filtrarLiquidos;
+
+  // Funcion para crear fichero de los productos cerrados y descargarlos
+  function descargarCerrados() {
+    const refCerrados = referenciales.filter(ref => ref.cerrado);
+    const liqCerrados = liquidos.filter(liq => liq.cerrado);
+
+    let contenido = "Referenciales cerrados:\n";
+    contenido += "ID,CQ,Ubicación,Fecha introducción,Fecha caducidad,Fecha cierre\n";
+    refCerrados.forEach(ref => {
+      contenido += `${ref.id},${ref.cq},"${ref.ubicacion || ''}",${formatDate(ref.fecha_intro)},${formatDate(ref.fecha_cad)},${formatDate(ref.fecha_cierre)}\n`;
+    });
+
+    contenido += "\nLíquidos cerrados:\n";
+    contenido += "ID,Nombre,Ubicación,Fecha introducción,Fecha caducidad,OR,Fecha registro,Fecha cierre\n";
+    liqCerrados.forEach(liq => {
+      contenido += `${liq.id},${liq.nombre},"${liq.ubicacion || ''}",${formatDate(liq.fecha_intro)},${formatDate(liq.fecha_cad)},${liq.orr || ''},${formatDate(liq.fecha_reg)},${formatDate(liq.fecha_cierre)}\n`;
+    });
+
+    const BOM = "\uFEFF";
+    const blob = new Blob([BOM + contenido], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'productos_cerrados.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // Funcion para crear fichero de excel de los productos (referenciales y líquidos) y descargarlos
+  function descargarExcel() {
+
+    let contenido = "<table border='1'><tr><th colspan='6' style='background-color:#f2f2f2;'>Referenciales</th></tr>";
+    contenido += "<tr><th>ID</th><th>CQ</th><th>Ubicación</th><th>Fecha introducción</th><th>Fecha caducidad</th><th>Fecha cierre</th></tr>";
+    referenciales.forEach(ref => {
+      contenido += `<tr>
+        <td>${ref.id}</td>
+        <td>${ref.cq}</td>
+        <td>${ref.ubicacion || ''}</td>
+        <td>${formatDate(ref.fecha_intro)}</td>
+        <td>${formatDate(ref.fecha_cad)}</td>
+        <td>${formatDate(ref.fecha_cierre)}</td>
+      </tr>`;
+    });
+    contenido += "</table><br><br>";
+
+    contenido += "<table border='1'><tr><th colspan='8' style='background-color:#f2f2f2;'>Líquidos</th></tr>";
+    contenido += "<tr><th>ID</th><th>Nombre</th><th>Ubicación</th><th>Fecha introducción</th><th>Fecha caducidad</th><th>OR</th><th>Fecha registro</th><th>Fecha cierre</th></tr>";
+    liquidos.forEach(liq => {
+      contenido += `<tr>
+        <td>${liq.id}</td>
+        <td>${liq.nombre}</td>
+        <td>${liq.ubicacion || ''}</td>
+        <td>${formatDate(liq.fecha_intro)}</td>
+        <td>${formatDate(liq.fecha_cad)}</td>
+        <td>${liq.orr || ''}</td>
+        <td>${formatDate(liq.fecha_reg)}</td>
+        <td>${formatDate(liq.fecha_cierre)}</td>
+      </tr>`;
+    });
+    contenido += "</table>";
+
+    const BOM = "\uFEFF";
+    const blob = new Blob([BOM + contenido], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'productos.xls';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // Funcion para crear fichero de excel de los productos (referenciales y líquidos) y descargarlos y mensaje de confirmación
+  function descargarExcelConfirmacion() {
+    if (confirm("¿Desea descargar el fichero Excel de todos los productos?")) {
+      descargarExcel();
+    }
+  }
+
+  // Funcion para crear fichero de excel de los productos cerrados y descargarlos
+  function descargarExcelCerrados() {
+    const refCerrados = referenciales.filter(ref => ref.cerrado);
+    const liqCerrados = liquidos.filter(liq => liq.cerrado);
+
+    let contenido = "<table border='1'><tr><th colspan='6' style='background-color:#f2f2f2;'>Referenciales cerrados</th></tr>";
+    contenido += "<tr><th>ID</th><th>CQ</th><th>Ubicación</th><th>Fecha introducción</th><th>Fecha caducidad</th><th>Fecha cierre</th></tr>";
+    refCerrados.forEach(ref => {
+      contenido += `<tr>
+        <td>${ref.id}</td>
+        <td>${ref.cq}</td>
+        <td>${ref.ubicacion || ''}</td>
+        <td>${formatDate(ref.fecha_intro)}</td>
+        <td>${formatDate(ref.fecha_cad)}</td>
+        <td>${formatDate(ref.fecha_cierre)}</td>
+      </tr>`;
+    });
+    contenido += "</table><br><br>";
+
+    contenido += "<table border='1'><tr><th colspan='8' style='background-color:#f2f2f2;'>Líquidos cerrados</th></tr>";
+    contenido += "<tr><th>ID</th><th>Nombre</th><th>Ubicación</th><th>Fecha introducción</th><th>Fecha caducidad</th><th>OR</th><th>Fecha registro</th><th>Fecha cierre</th></tr>";
+    liqCerrados.forEach(liq => {
+      contenido += `<tr>
+        <td>${liq.id}</td>
+        <td>${liq.nombre}</td>
+        <td>${liq.ubicacion || ''}</td>
+        <td>${formatDate(liq.fecha_intro)}</td>
+        <td>${formatDate(liq.fecha_cad)}</td>
+        <td>${liq.orr || ''}</td>
+        <td>${formatDate(liq.fecha_reg)}</td>
+        <td>${formatDate(liq.fecha_cierre)}</td>
+      </tr>`;
+    });
+    contenido += "</table>";
+
+    const BOM = "\uFEFF";
+    const blob = new Blob([BOM + contenido], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'productos_cerrados.xls';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // Funcion para crear fichero de excel de los productos cerrados y descargarlos y mensaje de confirmación
+  function descargarExcelCerradosConfirmacion() {
+    if (confirm("¿Desea descargar el fichero Excel de los productos cerrados?")) {
+      descargarExcelCerrados();
+    }
+  }
+
+  // Funcion para descargar excel de los referenciales
+  function descargarExcelReferenciales() {
+    let contenido = "<table border='1'><tr><th colspan='6' style='background-color:#f2f2f2;'>Referenciales</th></tr>";
+    contenido += "<tr><th>ID</th><th>CQ</th><th>Ubicación</th><th>Fecha introducción</th><th>Fecha caducidad</th><th>Fecha cierre</th></tr>";
+    referenciales.forEach(ref => {
+      contenido += `<tr>
+        <td>${ref.id}</td>
+        <td>${ref.cq}</td>
+        <td>${ref.ubicacion || ''}</td>
+        <td>${formatDate(ref.fecha_intro)}</td>
+        <td>${formatDate(ref.fecha_cad)}</td>
+        <td>${formatDate(ref.fecha_cierre)}</td>
+      </tr>`;
+    });
+    contenido += "</table>";
+
+    const BOM = "\uFEFF";
+    const blob = new Blob([BOM + contenido], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'referenciales.xls';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // Funcion para descargar excel de los líquidos
+  function descargarExcelLiquidos() {
+    let contenido = "<table border='1'><tr><th colspan='8' style='background-color:#f2f2f2;'>Líquidos</th></tr>";
+    contenido += "<tr><th>ID</th><th>Nombre</th><th>Ubicación</th><th>Fecha introducción</th><th>Fecha caducidad</th><th>OR</th><th>Fecha registro</th><th>Fecha cierre</th></tr>";
+    liquidos.forEach(liq => {
+      contenido += `<tr>
+        <td>${liq.id}</td>
+        <td>${liq.nombre}</td>
+        <td>${liq.ubicacion || ''}</td>
+        <td>${formatDate(liq.fecha_intro)}</td>
+        <td>${formatDate(liq.fecha_cad)}</td>
+        <td>${liq.orr || ''}</td>
+        <td>${formatDate(liq.fecha_reg)}</td>
+        <td>${formatDate(liq.fecha_cierre)}</td>
+      </tr>`;
+    });
+    contenido += "</table>";
+
+    const BOM = "\uFEFF";
+    const blob = new Blob([BOM + contenido], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'liquidos.xls';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // Funcion para descargar excel de los referenciales y mensaje de confirmación
+  function descargarExcelReferencialesConfirmacion() {
+    if (confirm("¿Desea descargar el fichero Excel de los referenciales?")) {
+      descargarExcelReferenciales();
+    }
+  }
+
+  // Funcion para descargar excel de los líquidos y mensaje de confirmación
+  function descargarExcelLiquidosConfirmacion() {
+    if (confirm("¿Desea descargar el fichero Excel de los líquidos?")) {
+      descargarExcelLiquidos();
+    }
+  }
+
+  // Funcion para descargar pdf de los productos (referenciales y líquidos)
+  function descargarPDF() {
+    let contenido = "<h2>Referenciales</h2><table border='1' style='border-collapse:collapse; font-size:12px;'><tr><th style='background-color:#f2f2f2; padding:4px;'>ID</th><th style='background-color:#f2f2f2; padding:4px;'>CQ</th><th style='background-color:#f2f2f2; padding:4px;'>Ubicación</th><th style='background-color:#f2f2f2; padding:4px;'>Fecha introducción</th><th style='background-color:#f2f2f2; padding:4px;'>Fecha caducidad</th><th style='background-color:#f2f2f2; padding:4px;'>Fecha cierre</th></tr>";
+    
+    referenciales.forEach(ref => {
+      contenido += `<tr>
+        <td style="padding:4px;">${ref.id}</td>
+        <td style="padding:4px;">${ref.cq}</td>
+        <td style="padding:4px;">${ref.ubicacion || ''}</td>
+        <td style="padding:4px;">${formatDate(ref.fecha_intro)}</td>
+        <td style="padding:4px;">${formatDate(ref.fecha_cad)}</td>
+        <td style="padding:4px;">${formatDate(ref.fecha_cierre)}</td>
+      </tr>`;
+    });
+    contenido += "</table><br><br>";
+
+    contenido += "<h2>Líquidos</h2><table border='1' style='border-collapse:collapse; font-size:12px;'><tr><th style='background-color:#f2f2f2; padding:4px;'>ID</th><th style='background-color:#f2f2f2; padding:4px;'>Nombre</th><th style='background-color:#f2f2f2; padding:4px;'>Ubicación</th><th style='background-color:#f2f2f2; padding:4px;'>Fecha introducción</th><th style='background-color:#f2f2f2; padding:4px;'>Fecha caducidad</th><th style='background-color:#f2f2f2; padding:4px;'>OR</th><th style='background-color:#f2f2f2; padding:4px;'>Fecha registro</th><th style='background-color:#f2f2f2; padding:4px;'>Fecha cierre</th></tr>";
+    
+    liquidos.forEach(liq => {
+      contenido += `<tr>
+        <td style="padding:4px;">${liq.id}</td>
+        <td style="padding:4px;">${liq.nombre}</td>
+        <td style="padding:4px;">${liq.ubicacion || ''}</td>
+        <td style="padding:4px;">${formatDate(liq.fecha_intro)}</td>
+        <td style="padding:4px;">${formatDate(liq.fecha_cad)}</td>
+        <td style="padding:4px;">${liq.orr || ''}</td>
+        <td style="padding:4px;">${formatDate(liq.fecha_reg)}</td>
+        <td style="padding:4px;">${formatDate(liq.fecha_cierre)}</td>
+      </tr>`;
+    });
+    contenido += "</table>";
+
+    const ventana = window.open('', '_blank');
+    ventana.document.write(`
+      <html>
+      <head>
+        <title>Productos</title>
+        <style>
+          table { width: 100%; border-collapse: collapse; font-size:12px; }
+          th, td { border: 1px solid #000; padding: 4px; text-align: left; }
+          th { background-color: #f2f2f2; }
+        </style>
+      </head>
+      <body>
+        ${contenido}
+      </body>
+      </html>
+    `);
+    ventana.document.close();
+    ventana.print();
+  }
+
+  // Función para descargar pdf de los referenciales
+  function descargarPDFReferenciales() {
+    let contenido = "<h2>Referenciales</h2><table border='1' style='border-collapse:collapse; font-size:12px;'><tr><th style='background-color:#f2f2f2; padding:4px;'>ID</th><th style='background-color:#f2f2f2; padding:4px;'>CQ</th><th style='background-color:#f2f2f2; padding:4px;'>Ubicación</th><th style='background-color:#f2f2f2; padding:4px;'>Fecha introducción</th><th style='background-color:#f2f2f2; padding:4px;'>Fecha caducidad</th><th style='background-color:#f2f2f2; padding:4px;'>Fecha cierre</th></tr>";
+    
+    referenciales.forEach(ref => {
+      contenido += `<tr>
+        <td style="padding:4px;">${ref.id}</td>
+        <td style="padding:4px;">${ref.cq}</td>
+        <td style="padding:4px;">${ref.ubicacion || ''}</td>
+        <td style="padding:4px;">${formatDate(ref.fecha_intro)}</td>
+        <td style="padding:4px;">${formatDate(ref.fecha_cad)}</td>
+        <td style="padding:4px;">${formatDate(ref.fecha_cierre)}</td>
+      </tr>`;
+    });
+    contenido += "</table>";
+
+    const ventana = window.open('', '_blank');
+    ventana.document.write(`
+      <html>
+      <head>
+        <title>Referenciales</title>
+        <style>
+          table { width: 100%; border-collapse: collapse; font-size:12px; }
+          th, td { border: 1px solid #000; padding: 4px; text-align: left; }
+          th { background-color: #f2f2f2; }
+        </style>
+      </head>
+      <body>
+        ${contenido}
+      </body>
+      </html>
+    `);
+    ventana.document.close();
+    ventana.print();
+  }
+
+  // Función para descargar pdf de los líquidos
+  function descargarPDFLiquidos() {
+    let contenido = "<h2>Líquidos</h2><table border='1' style='border-collapse:collapse; font-size:12px;'><tr><th style='background-color:#f2f2f2; padding:4px;'>ID</th><th style='background-color:#f2f2f2; padding:4px;'>Nombre</th><th style='background-color:#f2f2f2; padding:4px;'>Ubicación</th><th style='background-color:#f2f2f2; padding:4px;'>Fecha introducción</th><th style='background-color:#f2f2f2; padding:4px;'>Fecha caducidad</th><th style='background-color:#f2f2f2; padding:4px;'>OR</th><th style='background-color:#f2f2f2; padding:4px;'>Fecha registro</th><th style='background-color:#f2f2f2; padding:4px;'>Fecha cierre</th></tr>";
+    
+    liquidos.forEach(liq => {
+      contenido += `<tr>
+        <td style="padding:4px;">${liq.id}</td>
+        <td style="padding:4px;">${liq.nombre}</td>
+        <td style="padding:4px;">${liq.ubicacion || ''}</td>
+        <td style="padding:4px;">${formatDate(liq.fecha_intro)}</td>
+        <td style="padding:4px;">${formatDate(liq.fecha_cad)}</td>
+        <td style="padding:4px;">${liq.orr || ''}</td>
+        <td style="padding:4px;">${formatDate(liq.fecha_reg)}</td>
+        <td style="padding:4px;">${formatDate(liq.fecha_cierre)}</td>
+      </tr>`;
+    });
+    contenido += "</table>";
+
+    const ventana = window.open('', '_blank');
+    ventana.document.write(`
+      <html>
+      <head>
+        <title>Líquidos</title>
+        <style>
+          table { width: 100%; border-collapse: collapse; font-size:12px; }
+          th, td { border: 1px solid #000; padding: 4px; text-align: left; }
+          th { background-color: #f2f2f2; }
+        </style>
+      </head>
+      <body>
+        ${contenido}
+      </body>
+      </html>
+    `);
+    ventana.document.close();
+    ventana.print();
+  }
+
+  // ---- Ordenar tablas por columnas ----
+  function ordenarTabla(tabla, campo) {
+    const asc = !(ordenActual[tabla][campo] === "asc");
+    ordenActual[tabla][campo] = asc ? "asc" : "desc";
+
+    const lista = (tabla === "referenciales" ? referenciales : liquidos);
+
+    lista.sort((a, b) => {
+      let va = a[campo],
+          vb = b[campo];
+
+      if (campo.includes("fecha")) {
+        va = new Date(va);
+        vb = new Date(vb);
+      }
+
+      if (va < vb) return asc ? -1 : 1;
+      if (va > vb) return asc ? 1 : -1;
+      return 0;
+    });
+
+    cargarTablas();
+  }
+
+  document.querySelectorAll("#tablaReferenciales th").forEach(th => {
+    th.style.cursor = "pointer";
+    th.onclick = () => ordenarTabla("referenciales", th.dataset.col);
+  });
+
+  document.querySelectorAll("#tablaLiquidos th").forEach(th => {
+    th.style.cursor = "pointer";
+    th.onclick = () => ordenarTabla("liquidos", th.dataset.col);
+  });
+
+  fetchDatos();
+
+</script>
+</body>
+</html>
